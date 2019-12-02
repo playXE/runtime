@@ -85,34 +85,3 @@ impl CodeBlockRef {
 }
 
 pub type BlockSet = std::collections::HashSet<CodeBlockRef>;
-
-pub fn get_block_that_can_observe_side_effects(blocks: &[CodeBlockRef]) -> Vec<Instruction> {
-    let mut instructions = vec![];
-    for block in blocks.iter() {
-        let block: &CodeBlockRef = block;
-        for instruction in block.borrow().instructions.iter() {
-            if instruction.can_observe_side_effects() {
-                instructions.push(*instruction);
-            }
-        }
-    }
-
-    instructions
-}
-
-pub fn get_blocks_with_calls_to_functions_that_observe_side_effects(
-    blocks: &[CodeBlockRef],
-) -> BlockSet {
-    let mut set = BlockSet::new();
-    for block in blocks.iter() {
-        for instruction in block.borrow().instructions.iter() {
-            match instruction {
-                Instruction::Call(_) | Instruction::TailCall(_) => {
-                    set.insert(block.clone());
-                }
-                _ => (),
-            }
-        }
-    }
-    set
-}
