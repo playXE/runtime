@@ -32,8 +32,8 @@ fn main() {
 
     let mut ca = runtime::analysis::cycleanalysis::CycleAnalysis::new();
     ca.analyze(&cfg);
-    let mut dt = runtime::analysis::dom::DominatorTree::new(&cfg);
-    dt.analyze();
+    let mut dt = runtime::analysis::dom::DominatorTree::new();
+    dt.analyze(&cfg);
 
     println!("{:?}", dt.dominated);
     println!("{}", ca.back_edges.len());

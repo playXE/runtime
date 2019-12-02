@@ -4,8 +4,7 @@ use crate::cfg::*;
 pub type IndexVector = Vec<i32>;
 pub type IndexArrayVector = Vec<IndexVector>;
 
-pub struct PostDominatorTree<'a> {
-    pub cfg: &'a ControlFlowGraph,
+pub struct PostDominatorTree {
     pub blocks: Vec<CodeBlockRef>,
     pub p_dom: IndexVector,
     pub dominated: IndexArrayVector,
@@ -13,10 +12,9 @@ pub struct PostDominatorTree<'a> {
     pub blocks_to_index: BlockMap,
 }
 
-impl<'a> PostDominatorTree<'a> {
-    pub fn new(cfg: &'a ControlFlowGraph) -> Self {
+impl PostDominatorTree {
+    pub fn new() -> Self {
         Self {
-            cfg,
             blocks: vec![],
             p_dom: vec![],
             dominated: vec![],
@@ -25,8 +23,29 @@ impl<'a> PostDominatorTree<'a> {
         }
     }
 
-    pub fn analyze(&mut self) {
-        let post_order = self.cfg.reverse_topological_sequence();
+    pub fn dominates(
+        &self,
+        block: CodeBlockRef,
+        potential_predecessor: CodeBlockRef,
+        cfg: &ControlFlowGraph,
+    ) -> bool {
+        let id = *self.blocks_to_index.get(&block).unwrap();
+        let successor_id = *self.blocks_to_index.get(&potential_predecessor).unwrap();
+        let start_id = *self.blocks_to_index.get(&cfg.exit).unwrap();
+        let mut dominates;
+        let mut next_id = successor_id;
+        loop {
+            dominates = next_id == id;
+            next_id = self.p_dom[next_id] as _;
+            if !(start_id != next_id && !dominates) {
+                break;
+            }
+        }
+        dominates || next_id == id
+    }
+
+    pub fn analyze(&mut self, cfg: &ControlFlowGraph) {
+        let post_order = cfg.reverse_topological_sequence();
         let mut i = 0;
         for block in post_order.iter() {
             self.blocks.push(block.clone());
@@ -34,6 +53,7 @@ impl<'a> PostDominatorTree<'a> {
             self.p_dom.push(-1);
             i += 1;
         }
+        self.compute_dt(cfg);
     }
 
     pub fn intersect(&self, b1: i32, b2: i32) -> i32 {
@@ -50,8 +70,8 @@ impl<'a> PostDominatorTree<'a> {
         finger1
     }
 
-    pub fn compute_dt(&mut self) {
-        let end_node = *self.blocks_to_index.get(&self.cfg.exit.clone()).unwrap();
+    pub fn compute_dt(&mut self, cfg: &ControlFlowGraph) {
+        let end_node = *self.blocks_to_index.get(&cfg.exit.clone()).unwrap();
         let mut changed = true;
         self.p_dom[end_node] = end_node as _;
 

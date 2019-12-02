@@ -1,18 +1,16 @@
 use crate::block::*;
 use crate::cfg::*;
 
-pub struct DominatorTree<'a> {
-    cfg: &'a ControlFlowGraph,
+pub struct DominatorTree {
     blocks: Vec<CodeBlockRef>,
     i_dom: Vec<i32>,
     pub dominated: Vec<Vec<usize>>,
     blocks_to_index: BlockMap,
 }
 
-impl<'a> DominatorTree<'a> {
-    pub fn new(cfg: &'a ControlFlowGraph) -> Self {
+impl DominatorTree {
+    pub fn new() -> Self {
         Self {
-            cfg,
             blocks: vec![],
             i_dom: vec![],
             dominated: vec![],
@@ -36,8 +34,8 @@ impl<'a> DominatorTree<'a> {
         finger1
     }
 
-    pub fn analyze(&mut self) {
-        let post_order = self.cfg.topological_sequence();
+    pub fn analyze(&mut self, cfg: &ControlFlowGraph) {
+        let post_order = cfg.topological_sequence();
         let mut i = 0;
         for block in post_order.iter() {
             self.blocks.push(block.clone());
@@ -46,13 +44,13 @@ impl<'a> DominatorTree<'a> {
             self.i_dom.push(-1);
             i += 1;
         }
-        self.compute_dt();
+        self.compute_dt(cfg);
     }
 
-    pub fn compute_dt(&mut self) {
+    pub fn compute_dt(&mut self, cfg: &ControlFlowGraph) {
         let start_node = self
             .blocks_to_index
-            .get(&self.cfg.get_entry_block())
+            .get(&cfg.get_entry_block())
             .map(|x| *x)
             .unwrap();
         let mut changed = true;
@@ -95,13 +93,15 @@ impl<'a> DominatorTree<'a> {
         }
     }
 
-    pub fn dominates(&self, block: CodeBlockRef, potential_successor: CodeBlockRef) -> bool {
+    pub fn dominates(
+        &self,
+        block: CodeBlockRef,
+        potential_successor: CodeBlockRef,
+        cfg: &ControlFlowGraph,
+    ) -> bool {
         let id = *self.blocks_to_index.get(&block).unwrap();
         let successor_id = *self.blocks_to_index.get(&potential_successor).unwrap();
-        let start_id = *self
-            .blocks_to_index
-            .get(&self.cfg.get_entry_block())
-            .unwrap();
+        let start_id = *self.blocks_to_index.get(&cfg.get_entry_block()).unwrap();
         let mut dominates;
         let mut next_id = successor_id;
         loop {
@@ -114,7 +114,7 @@ impl<'a> DominatorTree<'a> {
         dominates || next_id == id
     }
 
-    pub fn get_dominator(&mut self, block: CodeBlockRef) -> Option<CodeBlockRef> {
+    pub fn get_dominator(&self, block: CodeBlockRef) -> Option<CodeBlockRef> {
         let n = *self.blocks_to_index.get(&block).unwrap();
         self.blocks.get(self.i_dom[n] as usize).cloned()
     }
